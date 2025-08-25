@@ -2,21 +2,23 @@ import re
 import openai
 import dspy
 from dspy.teleprompt import BootstrapFewShot
-import requests
-from bs4 import BeautifulSoup
+
 from markitdown import MarkItDown
 import os
-import genllm as g
+import dspyanalysis as g
 from dotenv import load_dotenv
 import  json
 import sys
+import utils
+
+
 def generate_llms_txt_for_dspy(gurl,lm):
     # Initialize our analyzer
     analyzer = g.RepositoryAnalyzer()
 
     # Gather DSPy repository information
     repo_url = gurl
-    file_tree, readme_content, package_files = g.gather_repository_info(repo_url)
+    file_tree, readme_content, package_files = utils.gather_repository_info(repo_url)
 
     # Generate llms.txt
     result = analyzer(
@@ -36,6 +38,9 @@ if __name__ == "__main__":
     lm = dspy.LM("openai/gpt-4o-mini",api_key=key)
     dspy.settings.configure(lm=lm)
     url="https://github.com/electrum/tpch-dbgen"
+    file_tree_txt, readme_content, package_files_content, combined_tags = utils.gather_repository_info(url)
+    print(combined_tags)
+    exit(1)
     #url="https://github.com/stanfordnlp/dspy"
     try:
         result = generate_llms_txt_for_dspy(url,lm)
