@@ -110,7 +110,7 @@ class DocumentationLearningAgent(dspy.Module):
 
     def __init__(self):
         super().__init__()
-        self.fetcher = DocumentationFetcher()
+        self.fetcher = utils.DocumentationFetcher()
         self.analyze_docs = dspy.ChainOfThought(LibraryAnalyzer)
         self.generate_code = dspy.ChainOfThought(CodeGenerator)
         self.refine_code = dspy.ChainOfThought(

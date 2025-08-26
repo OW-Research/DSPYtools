@@ -130,33 +130,26 @@ def collect_cpp_ctags(repo_url, file_tree) -> str:
             if os.path.exists(local_file_path):
                 try:
                     print(f"Generating ctags for {local_file_path}")
-                    result = subprocess.run(
-                        ["ctags", "-f", "-", "--fields=+n", filename],
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                        cwd=local_repo_path
-                    )
+                    result = subprocess.run([
+                            'ctags', '-f', '-', '--fields=+n', local_file_path
+                        ], capture_output=True, text=True, check=True)
                     tags_output.append(result.stdout)
                 except subprocess.CalledProcessError as e:
                     print(f"ctags failed for {local_file_path}: {e}")
             else:
                 # fallback: fetch and save to /tmp as before
                 file_content = get_github_file_content(repo_url, filename)
-                tmp_file_path = f"/tmp/{os.path.basename(filename)}"
+                tmp_file_path = os.path.basename(filename)
                 with open(tmp_file_path, "w", encoding="utf-8") as tmp_file:
                     tmp_file.write(file_content)
-                try:
-                    result = subprocess.run(
-                        ["ctags", "-f", "-", "--fields=+n", tmp_file_path],
-                        capture_output=True,
-                        text=True,
-                        check=True,
-                    )
+                    try:
+                        result = subprocess.run([
+                            'ctags', '-f', '-', '--fields=+n', tmp_file_path
+                        ], capture_output=True, text=True, check=True)
                     tags_output.append(result.stdout)
                 except subprocess.CalledProcessError as e:
                     print(f"ctags failed for {tmp_file_path}: {e}")
-                finally:
+            finally:
                     os.remove(tmp_file_path)
     return "".join(tags_output)
 

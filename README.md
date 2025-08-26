@@ -1,0 +1,1 @@
+how to optimize and remove duplicate info from code
