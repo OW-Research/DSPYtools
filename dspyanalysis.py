@@ -1,3 +1,18 @@
+# Example: New agent to process a custom flow
+class MyStepSignature(dspy.Signature):
+    """Signature for a custom step in the flow."""
+    input_data: str = dspy.InputField(desc="Input for the step")
+    output_data: str = dspy.OutputField(desc="Output from the step")
+
+class MyFlowAgent(dspy.Module):
+    """Example agent that processes a custom flow using ChainOfThought."""
+    def __init__(self):
+        super().__init__()
+        self.step1 = dspy.ChainOfThought(MyStepSignature)
+
+    def forward(self, input_data):
+        step1_result = self.step1(input_data=input_data)
+        return step1_result.output_data
 # This is from https://dspy.ai/tutorials/llms_txt_generation/ 
 import dspy
 from pathlib import Path

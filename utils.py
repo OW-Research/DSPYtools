@@ -1,3 +1,33 @@
+# Tool: Find relevant references in the codebase
+import re
+def find_references(symbol: str, file_tree: list[str]) -> list[str]:
+    """Search for symbol references in all files listed in file_tree."""
+    matches = []
+    for file_path in file_tree:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for i, line in enumerate(f, 1):
+                    if re.search(rf'\b{re.escape(symbol)}\b', line):
+                        matches.append(f"{file_path}:{i}: {line.strip()}")
+        except Exception:
+            continue
+    return matches
+
+# Tool: Create SVG (XML) visualization
+def create_svg_visualization(data: dict) -> str:
+    """Generate SVG XML string from a data dictionary (simple example)."""
+    width = data.get('width', 200)
+    height = data.get('height', 100)
+    circles = data.get('circles', [])
+    svg = [f'<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">']
+    for c in circles:
+        cx = c.get('cx', 50)
+        cy = c.get('cy', 50)
+        r = c.get('r', 20)
+        color = c.get('color', 'blue')
+        svg.append(f'  <circle cx="{cx}" cy="{cy}" r="{r}" fill="{color}" />')
+    svg.append('</svg>')
+    return '\n'.join(svg)
 import shutil
 import subprocess
 import os
