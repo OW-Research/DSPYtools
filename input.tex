@@ -1,0 +1,163 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{url}
+\usepackage{fullpage}
+\usepackage{todonotes}
+\usepackage{ulem}
+\newcommand{\ignore}[1]{\relax }
+
+
+\title{Category III: Scientific Data Management at Scale}
+\author{Mohamed Khalefa and Antonio Badia}
+%real life deadline
+%NSF 25-544
+%10 page limit; $500,000 for 2 years.
+\date{December 4 2025}
+
+\begin{document}
+
+\maketitle
+
+
+\ignore{
+REVIEW CRITERIA For Category III Planning proposals:
+\begin{itemize}
+\item
+    Would the envisaged eventual Category I or Category II project be of a stature and impact to advance the goals of the IDSS program "to support national-scale operational data cyberinfrastructure that broadly advances and enables data- and artificial intelligence-driven research for many communities”?
+    \item 
+    Does the proposal provide evidence that the eventual Category I or Category II project would address transdisciplinary data cyberinfrastructure needs to address data-intensive workflows and data integration needs of artificial-intelligence (AI)-driven research? 
+     \itemå
+    Is there a well-designed planning process and set of activities, including engaging the relevant communities, sufficient to inform sound designs and project plans to develop an eventual competitive IDSS Category I or Category II proposal?
+\end{itemize}
+}
+
+
+%address review criteria.
+%   The functionality envisioned is absolutely basic for any kind of data-driven research. The functionality is not tailored to a particular discipline -although extensions to address specific needs will be examined. It is centered on managing data-intensive workflows.
+%The two aims of the proposal are: to develop software that is responsive to scientists' needs; and to design an architecture that will allow the software to scale to national level. 
+\ignore{
+Of special interest:
+-Projects that facilitate the connection of data sources with advanced computing resources and analytic environments in integrative ways for an appropriately broad array of use cases. 
+-Projects that address the emerging data-intensive workflows and data integration needs of artificial-intelligence (AI)-driven research (including research about AI and research using AI capabilities). 
+-Projects that focus on enabling one or more specific points in the data lifecycle applied at a national scale.
+}
+
+%found out from scientists about pain points -is their data in the cloud/computer/cluster? Where does their time go? Problems with data?
+
+%To improve and advance science, scientists need to be able to reproduce others’ data or combine data from multiple sources to learn something new.
+
+\section{Current Situation and Challenges} 
+The computer has become an indispensable tool for scientists. It is used to generate and store data, run simulations, and analyze results. A large body of specialized software has been produced by scientists or computer experts to help with these tasks. This body of software can be divided into two classes: programs that accomplish a very specific, discipline-centered task; and large cyber-infrastructure projects. Examples of the first category include an Open-Source Python Package for Analysis of Planetary Atmospheric Spectra (\cite{Alday-2025}) or the R Package for Interpolating Age-Specific Mortality Rates (\cite{Flici-2025}).  Such tools typically require that the data be in a certain format and obeys certain restrictions (being 'clean' or free of problems is commonly one of them, although datasets rarely are problem-free). The PI and co-PI experience shows that scientists (even inside the same group or project) use many different software tools, each one with a specific purpose; many times, such tools use their own proprietary format and cannot communicate with each other.
+The second group of software includes workflow management and cluster management tools that allow the deployment of existing, large-scale resources. Examples include Sage and Pegasus (\cite{Pegasus}), both developed with NSF funding. Sage is a national-scale  project to support Artificial Intelligence (AI) linked to distributed instrumentation. It provides storage and management of time-series data via its own cloud environment, with facilities for AI-based analysis.
+Pegasus is a workflow management system that allows scientists  to specify data dependent tasks independently of computing environments. Such resources are essential to scientific development; however, their use requires extensive technical support and it is currently focused on specific use cases. 
+%This fact constraints the capability of both tools and results to be shared.
+We note that, besides the above,
+ many workflow management systems have been developed (\cite{workflow} lists 362 such systems).
+ 
+At the same time, there is a need for general purpose software that provides basic functionality. For instance, the R package mentioned above assumes life-table data in csv format. If the data available to a researcher has a different format, there is a need to restructure the dataset. This calls for {\em transforming} software, which restructures data from one format to another. 
+Another task that is commonly needed is the {\em generation of metadata}. Datasets (be they made of data gathered or obtained via experiments or simulations) can only be shared if they come with documentation that explains their origin and characteristics -so that other scientists can determine their suitability for new uses (\cite{sciencefriction}). Unlike the case of scientific data analysis and workflows, there are few tools that generate and manage metadata, and those that exist focus on particular domains (\cite{metadata}).
+
+\section{Proposed Research}
+The overall goal of this project is to identify "pain points" in current scientific computing practices. A category I proposal will then be developed with the purpose of addressing such pain points.
+
+The working hypothesis of the project is that
+existing infrastructure (at the level of software, computation, and data) is not as widely known and used as it could and should be. Further, we hypothesize that
+\begin{itemize}
+    \item for data, this is due to: lack of metadata that explains the semantics of the data; and lack of use of modern data formats that would facilitate data reuse. 
+    \item for software, this is due to problems with dependencies (i.e. when a software package requires another software package for running) and implementation issues. This in turn is due to the fact that some scientific software is developed without version control or other software engineering best practices.
+ \item for computation (i.e. existing clusters and similar resources), this is due to either lack of awareness among scientists; or lack of resources (in the form of computing experts support) to make effective use of the resources.
+\end{itemize}
+The PI and co-PI have already interviewed some people working in scientific computing, but this provides only limited evidence, so there is a need to check whether these observations generalize.
+One of the main tasks of this project is to test these hypotheses. If they are validated,  we will build our category I proposal around the development of tools and methods to address these issues. If they are not validated, we will seek to develop alternative hypotheses about the main issues facing scientific computing in the United States nowadays.
+
+\subsection{Key Objective}
+The ultimate objective of this project is the development of a Category I proposal. Therefore, during the grant time we will focus on the following activities: 
+\begin{enumerate}
+    \item \textbf{Identify Universal Data Management Needs}: Analyze the basic, general-purpose functionalities required by scientists across disciplines. This may include a variety of tools for needs that are common to all disciplines, like transforming raw data into standardized formats, and analyzing datasets to detect problems like missing data.
+
+\item \textbf{Gather Requirements for Scalable software tools}: to facilitate collaboration at large scale, any tools developed during a Category I proposal must be able to meet certain requirements, including
+\begin{itemize}
+    \item \textit{Facilitate Data and Workflow Sharing}: Ensure tools are designed to enable effective data sharing, version control, and integration between institutions, promoting collaboration and data transparency.
+        \item \textit{Generate metadata, including lineage/provenance}: Datasets must be annotated with descriptive information, including their origin and any preparation done (cleaning, etc.), in order to be considered for re-use by other scientists than the ones that originally created it.
+        \item \textit{Workflow Management}: Tools to help scientists create, track, and execute complex data analysis pipelines, including integration with popular scientific workflows and platforms.
+\end{itemize}
+\item \textbf{Identify Architectures that can Scale}: Even if tools exist that address all identified needs, such tools need to be integrated into a coherent architecture that maximizes resource use and facilitates collaboration and coordination of multiple working groups, distributed across the whole country.
+\end{enumerate}
+
+\subsection{Approach}
+The project will be executed in multiple phases, each aiming to address distinct needs while remaining flexible to accommodate evolving requirements.
+
+\begin{itemize}
+    \item 
+{\em Phase 1: Understanding Current Needs.}
+To develop the most effective tools, we must first understand the current landscape of data management in scientific research. We will conduct interviews and surveys with researchers from various fields (e.g., biology, physics, social sciences) to identify:
+\begin{itemize}
+    \item The types of software tools, data formats, and computational resources commonly used by scientists.
+    \item Pain points and limitations in existing data management systems, including issues related to data formatting, metadata generation, and sharing.
+\end{itemize}
+This will be done in two stages:
+\begin{enumerate}
+    \item Initial surveys to gather general information about current practices in data management.
+    \item Follow-up interviews to identify key challenges and bottlenecks in existing workflows and systems.
+\end{enumerate}
+We will start locally and then expand via recommendations from scientists, to ensure good response. The co-PI's institution has strong tries with Brookhaven National Laboratory, so the co-PI will approach some of their scientists and request meetings with different groups. We will interview not only the scientists but also their technical support, since they are more likely to be able to provide technical details about the computing needs of the projects they are involved in.  We will also research GitHub accounts and other scientific repositories like the Journal of Open Research Software to create a repository of what is currently available to the working scientists.
+
+Our approach will avoid the low response problem of 'cold call' surveys and will gather more technical detail than traditional questionnaires.
+
+\item {\em Phase 2: System Architecture and Scalability.}
+A central component of the project is to develop a flexible system architecture that can scale to both individual researchers and large-scale, multi-institutional collaborations. This architecture will enable:
+\begin{enumerate}
+    \item \textbf{Flexible Data Management}: Support for local (individual laptops) and cloud-based (distributed computing) storage solutions.
+    \item \textbf{Interoperability}: Integration with existing scientific data repositories and platforms (e.g., DataONE) to enable easy data sharing and access.
+    \item \textbf{Version Control}: Implement version control mechanisms to track changes in datasets, workflows, and results over time.
+\end{enumerate}
+
+
+\item {\em Phase 3: Data Sharing and Collaboration.}
+The tools will also facilitate the sharing of data and workflows across institutions. This phase will focus on:
+\begin{enumerate}
+    \item \textbf{Data Packaging}: Designing systems that package datasets with corresponding metadata and analysis scripts into a single, shareable format that ensures reproducibility.
+    \item \textbf{Collaboration Platforms}: Developing platforms that allow seamless exchange of data products, datasets, and workflows between institutions, enabling collaborative research on a national scale.
+    \item \textbf{Security and Privacy}: Ensuring that data sharing respects privacy and security concerns, especially for sensitive data, while maintaining compatibility with open science principles.
+\end{enumerate}
+
+\item {\em Phase 4: National Coordination and Expansion.}
+Once the core needs are identified, we will explore how tools that address them can be integrated into national-level research infrastructures. This phase will involve:
+\begin{enumerate}
+    \item \textbf{Governance and Policy}: Assessing the governance and policy requirements for national-scale data sharing and workflow management.
+    \item \textbf{Partnerships}: Identifying potential partnerships with existing cyber-infrastructure projects and data repositories to ensure broad adoption and sustainability of the tools.
+    \item \textbf{Scaling and Optimization}: Further refining the tools to ensure they scale efficiently across large research institutions and diverse computational environments.
+\end{enumerate}
+\end{itemize}
+
+\subsection{Deliverables}
+At the completion of this project, we aim to deliver:
+\begin{enumerate}
+     \item \textbf{System Architecture}: A detailed, scalable system design that supports both local and cloud-based infrastructure.
+    \item \textbf{Category I Proposal}: A comprehensive proposal for the further expansion and refinement of these tools, with a focus on national-scale data management and sharing.
+\end{enumerate}
+
+
+
+
+We assume that the scientists' needs can be addressed via the creation of certain (software) tools like software registries, metadata generation tools, metadata repositories, etc. 
+ The goal of this proposal is to answer a few crucial questions:
+\begin{enumerate}
+    \item which kind of tools will serve the needs of scientists, regardless of area of research? What capabilities are needed to address the tasks that scientists carry out? 
+    \item can we develop tools that adjust to national-scale? Can the tools be devised so that they run in laptops, clusters, or the cloud? 
+    \item If groups of scientists at several institutions use such tools, how can all these individual systems coordinate and facilitate exchange of data products, datasets, workflows and results? Which software architecture (centralized, loosely coordinated, completely decentralized) would suit this challenge better?
+\end{enumerate}
+
+Traditional software development does not address these issues. 
+In this project, we propose instead to carry out the following activities:
+\begin{itemize}
+    \item We will start by asking different groups of scientists about their data management needs; we will then initiate development of some tools that address basic needs. These tools will be tested by scientists and further refined according to the feedback received. This process will be repeated in a tight loop to make sure that software development is guided by scientist's needs.
+    \item We will investigate ways in which scientists share data and results in order to inform the design of a system that can scale to national level. We will design an architecture for data and software sharing -again in close collaboration with scientists, to make sure that what we offer can be incorporated into their workflows with minimal or no disruption. For instance, there may be results that can be shared and results that must be kept confidential: private data needs to be anonymized; temporary results confirmed.
+\end{itemize}
+
+ Given the diversity of software available, the first step would be to find out what scientists actually use. The PI and co-PI propose to carry out a series of interviews and questionnaires at their respective institutions to find out what software, data standards and computing infrastructure are actually used in everyday scientific research. We will start focusing on groups of scientists with existing NSF grants (NIH grants, for medical researchers), as these usually provide the stimulus for organized data gathering and analysis. We will compare results across institutions and then reach out to other institutions across the country. To guarantee good response, we will start by asking for recommendations and introductions from the initial group of scientists interviewed. We will also talk to the technical personnel who is in charge of implementing the software systems needed for research. On a second round of interviews, we will ask the scientists for the main {\em pain points} with respect to computing, i.e. the capabilities they wish they had, as opposed to the capabilities they currently have. We will compare the results of both rounds of interviews with the lists of software available in published references to get an idea of the types of programs, data and workflows used, and analyze their features against the wish list of scientists. Using this information, a Category I proposal will be developed, centered on what scientists actually use and need.
+
+\bibliographystyle{acm}
+\bibliography{main}
+
+\end{document}

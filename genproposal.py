@@ -1,14 +1,17 @@
 import dspy
 import requests
 from bs4 import BeautifulSoup
-import html2text
+#import html2text
 from typing import List, Dict, Any
 import json
 from urllib.parse import urljoin, urlparse
 import time
 import re
 from datetime import datetime
+import argparse
+import sys
 
+lm = dspy.LM("openai/gpt-4o-mini")
 dspy.configure(lm=lm)
 
 
@@ -77,6 +80,146 @@ class LaTeXStructureParser:
         return structure
 
     @staticmethod
+    def _remove_ignore_blocks(latex_content: str) -> str:
+        r"""Remove any \ignore{...} blocks (nested braces handled).
+
+        Removes content wrapped in \ignore{...} which is commonly used to
+        hide content in LaTeX documents.
+        """
+        # Remove brace form \ignore{...} with nesting support
+        while '\\ignore{' in latex_content:
+            latex_content = re.sub(r'\\ignore\{([^{}]|\{[^{}]*\})*\}', '', latex_content, flags=re.DOTALL)
+        return latex_content
+
+    @staticmethod
+    def parse_paragraphs(latex_content: str) -> List[Dict[str, Any]]:
+        r"""Parse LaTeX content into paragraphs with section/subsection hierarchy.
+
+        Returns a list of dicts with structure:
+        {
+            "index": int,
+            "section": str (section title or empty),
+            "subsection": str (subsection title or empty),
+            "paragraph": str (cleaned paragraph text),
+            "is_in_environment": bool (True if inside itemize, enumerate, etc.)
+        }
+
+        - Removes \ignore{...} blocks before parsing
+        - Preserves section/subsection hierarchy
+        - Splits paragraphs on blank lines (2+ newlines)
+        - Filters out LaTeX commands and environments
+        """
+        content = LaTeXStructureParser._remove_ignore_blocks(latex_content)
+
+        # Remove LaTeX preamble (everything before \begin{document})
+        match = re.search(r'\\begin\{document\}', content)
+        if match:
+            content = content[match.end():]
+
+        # Remove \end{document} and anything after
+        content = re.sub(r'\\end\{document\}.*', '', content, flags=re.DOTALL)
+
+        # Normalize line endings
+        content = content.replace('\r\n', '\n')
+
+        # Extract section and subsection positions with their titles
+        sections_map = []
+        for m in re.finditer(r'\\section\*?\{([^}]+)\}', content):
+            sections_map.append((m.start(), m.group(1), 'section'))
+        for m in re.finditer(r'\\subsection\*?\{([^}]+)\}', content):
+            sections_map.append((m.start(), m.group(1), 'subsection'))
+        sections_map.sort(key=lambda x: x[0])
+
+        # Split into raw paragraphs on blank lines (2+ newlines)
+        raw_paras = re.split(r'\n\n+', content)
+
+        paragraphs = []
+        current_section = ""
+        current_subsection = ""
+        section_pos = 0
+
+        for idx, raw_para in enumerate(raw_paras):
+            para = raw_para.strip()
+            if not para:
+                continue
+
+            # Skip pure LaTeX structure lines (section/subsection definitions)
+            if para.startswith('\\section') or para.startswith('\\subsection'):
+                continue
+
+            # Skip \maketitle and other document markup
+            if para in ('\\maketitle', '\\tableofcontents', '\\begin{document}', '\\end{document}'):
+                continue
+
+            # Update current section/subsection based on position
+            para_pos = content.find(para, section_pos)
+            if para_pos == -1:
+                para_pos = section_pos
+            section_pos = para_pos + len(para)
+
+            for s_pos, title, s_type in sections_map:
+                if s_pos <= para_pos:
+                    if s_type == 'section':
+                        current_section = title
+                        current_subsection = ""
+                    elif s_type == 'subsection':
+                        current_subsection = title
+                else:
+                    break
+
+            # Clean up the paragraph: remove LaTeX-specific markup
+            cleaned = LaTeXStructureParser._clean_paragraph_text(para)
+            
+            if not cleaned:
+                continue
+
+            # Detect if inside an environment (itemize, enumerate)
+            in_env = bool(re.search(r'\\item\b', para))
+
+            paragraphs.append({
+                "index": len(paragraphs),
+                "section": current_section,
+                "subsection": current_subsection,
+                "paragraph": cleaned,
+                "is_in_environment": in_env
+            })
+
+        return paragraphs
+
+    @staticmethod
+    def _clean_paragraph_text(text: str) -> str:
+        r"""Remove LaTeX markup from paragraph text while preserving content.
+
+        Removes or simplifies:
+        - \cite{...}, \ref{...}, \label{...}
+        - \textbf{...}, \textit{...}, \emph{...}
+        - \item directives
+        - Math mode delimiters (but keeps the math)
+        - \begin{...} and \end{...} environment markers
+        """
+        # Remove \begin{...} and \end{...} but keep content inside
+        text = re.sub(r'\\(begin|end)\{[^}]*\}', '', text)
+        
+        # Remove citation, reference, label commands
+        text = re.sub(r'\\(cite|ref|label)\{[^}]*\}', '', text)
+        
+        # Remove text formatting commands (keep inner text)
+        text = re.sub(r'\\(textbf|textit|emph|texttt|text|sout|uline)\{([^}]*)\}', r'\2', text)
+        
+        # Remove \em, \it, \bf styling marks
+        text = re.sub(r'\\(em|it|bf)\b\s*', '', text)
+        
+        # Remove \item markers
+        text = re.sub(r'\\item\s+', '', text)
+        
+        # Simplify inline math ($ ... $)
+        text = re.sub(r'\$([^$]+)\$', r'[\1]', text)
+        
+        # Clean up multiple spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        return text
+    @staticmethod
     def _extract_title(latex_content: str) -> str:
         """Extract document title."""
         match = re.search(r'\\title\{([^}]+)\}', latex_content)
@@ -140,6 +283,16 @@ class Proofread(dspy.Signature):
     proofread_blog_post: str = dspy.OutputField(desc="Text with added references.")
 
 
+class EditParagraph(dspy.Signature):
+    """Edit a single paragraph according to an instruction.
+
+    This signature allows the LLM to operate on one paragraph at a time.
+    """
+    paragraph: str = dspy.InputField()
+    instruction: str = dspy.InputField()
+    edited_paragraph: str = dspy.OutputField()
+
+
 
 # 3. Create the Proposal Generator Pipeline as a DSPy Module
 class ProposalGenerator(dspy.Module):
@@ -152,6 +305,7 @@ class ProposalGenerator(dspy.Module):
         self.generate_section_2 = dspy.Predict(GenerateSection)
         self.generate_conclusion = dspy.Predict(GenerateSection)
         self.proofread = dspy.Predict(Proofread)
+        self.edit_paragraph_predict = dspy.Predict(EditParagraph)
         self.paragraph_history = ParagraphHistory()
 
     def forward(self, topic):
@@ -204,11 +358,209 @@ class ProposalGenerator(dspy.Module):
 
         return polished_proposal
 
+    def edit_paragraph_via_llm(self, paragraph_text: str, instruction: str, section_title: str = "", user_hint: str = "") -> str:
+        """Use the LLM to edit a single paragraph and record a new version.
+
+        Args:
+            paragraph_text: The paragraph to edit
+            instruction: The editing instruction for the LLM
+            section_title: The section this paragraph belongs to
+            user_hint: Optional user-provided context/hint to guide the LLM
+
+        Returns the edited paragraph text.
+        """
+        # Combine instruction with user hint if provided
+        full_instruction = instruction
+        if user_hint:
+            full_instruction = f"{instruction}\n\nUser hints/context: {user_hint}"
+        
+        resp = self.edit_paragraph_predict(paragraph=paragraph_text, instruction=full_instruction)
+        edited = resp.edited_paragraph
+        # record version
+        key = section_title or f"Paragraph_{hash(paragraph_text) % 10000}"
+        self.paragraph_history.add_version(key, edited)
+        return edited
+    
+    def extract_changes(self, original_paragraphs: List[Dict[str, Any]], edited_paragraphs: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Extract and summarize changes between original and edited paragraphs.
+
+        Returns a dict with:
+        - total_paragraphs: number of paragraphs
+        - changed_paragraphs: number that were edited
+        - changes: list of dicts with {index, section, subsection, original, edited, change_type}
+        """
+        changes = []
+        changed_count = 0
+        
+        for orig, edited in zip(original_paragraphs, edited_paragraphs):
+            if orig['paragraph'] != edited.get('final', orig['paragraph']):
+                changed_count += 1
+                changes.append({
+                    "index": orig['index'],
+                    "section": orig['section'],
+                    "subsection": orig['subsection'],
+                    "original": orig['paragraph'],
+                    "edited": edited.get('final', orig['paragraph']),
+                    "change_type": "llm_edit" if edited.get('final') else "manual_edit"
+                })
+        
+        return {
+            "total_paragraphs": len(original_paragraphs),
+            "changed_paragraphs": changed_count,
+            "change_percentage": (changed_count / len(original_paragraphs) * 100) if original_paragraphs else 0,
+            "changes": changes
+        }
+
+    def import_and_edit_latex(self, filepath: str, auto_instruction: str = None, interactive: bool = True, 
+                              auto_hints: str = None, extract_changes_summary: bool = False) -> tuple:
+        """Import a .tex file, parse paragraphs, and allow editing each paragraph.
+
+        Args:
+            filepath: Path to the .tex file
+            auto_instruction: Instruction to apply to all paragraphs in non-interactive mode
+            interactive: If True, prompt user for each paragraph
+            auto_hints: Optional hints/context to provide to the LLM (same for all paragraphs)
+            extract_changes_summary: If True, return a summary of all changes made
+
+        Interactive mode options per paragraph:
+          (e)dit via LLM, (h)int - provide context hint, (r)eplace manually, (s)kip, (q)uit
+
+        Returns: 
+            tuple of (results, changes_summary) if extract_changes_summary=True
+            else just results list
+        """
+        with open(filepath, 'r', encoding='utf-8') as f:
+            latex = f.read()
+
+        paragraphs = LaTeXStructureParser.parse_paragraphs(latex)
+        results = []
+        original_paragraphs = [p.copy() for p in paragraphs]  # Keep original for comparison
+
+        for p in paragraphs:
+            para_text = p['paragraph']
+            current_hint = ""  # Track hint for this paragraph
+            
+            print('\n' + '=' * 60)
+            header = p['section'] or '(no section)'
+            if p['subsection']:
+                header += f' > {p["subsection"]}'
+            print(f"Paragraph {p['index']} — Section: {header}\n")
+            print(para_text)
+
+            final_text = para_text
+
+            if interactive:
+                while True:
+                    choice = input("\nChoose: (e)dit via LLM, (h)int, (r)eplace manually, (s)kip, (q)uit: ").strip().lower()
+                    if choice == 'e':
+                        instr = input('Enter edit instruction (or leave blank for "Improve clarity and grammar"): ').strip()
+                        if not instr:
+                            instr = 'Improve clarity and grammar while preserving meaning.'
+                        final_text = self.edit_paragraph_via_llm(
+                            para_text, instr, 
+                            section_title=p['section'] or '', 
+                            user_hint=current_hint
+                        )
+                        print('\nEdited paragraph:\n')
+                        print(final_text)
+                        break
+                    elif choice == 'h':
+                        hint_input = input('Provide a hint or context for the LLM (e.g., "focus on technical accuracy"): ').strip()
+                        if hint_input:
+                            current_hint = hint_input
+                            print(f'✓ Hint saved: "{hint_input}"')
+                        else:
+                            print('No hint provided.')
+                    elif choice == 'r':
+                        print('Enter replacement text (end with a single line containing only ".end")')
+                        lines = []
+                        while True:
+                            line = input()
+                            if line.strip() == '.end':
+                                break
+                            lines.append(line)
+                        final_text = '\n'.join(lines)
+                        self.paragraph_history.add_version(p['section'] or f'Paragraph_{p["index"]}', final_text)
+                        break
+                    elif choice == 's':
+                        break
+                    elif choice == 'q':
+                        print('Quitting interactive editor.')
+                        results.append({**p, 'final': final_text})
+                        if extract_changes_summary:
+                            changes = self.extract_changes(original_paragraphs, results)
+                            return results, changes
+                        return results
+                    else:
+                        print('Unknown choice, please enter e, h, r, s, or q.')
+            else:
+                # non-interactive: apply auto_instruction to all paragraphs
+                if auto_instruction:
+                    final_text = self.edit_paragraph_via_llm(
+                        para_text, auto_instruction, 
+                        section_title=p['section'] or '', 
+                        user_hint=auto_hints or ""
+                    )
+
+            results.append({**p, 'final': final_text})
+
+        if extract_changes_summary:
+            changes = self.extract_changes(original_paragraphs, results)
+            return results, changes
+        return results
+
 
 # 4. Run the Program
 if __name__ == "__main__":
+    parser = LaTeXStructureParser()
+
+    ap = argparse.ArgumentParser(description='Generate and edit proposals / import LaTeX and edit paragraphs.')
+    ap.add_argument('--latex-file', '-l', help='Path to a .tex file to import and edit')
+    ap.add_argument('--auto-instruction', '-a', help='If provided with --latex-file and --non-interactive, apply this instruction to all paragraphs')
+    ap.add_argument('--auto-hints', '--hints', help='Provide hints/context to guide the LLM (used with --auto-instruction)')
+    ap.add_argument('--non-interactive', action='store_true', help='Run auto edits without prompting')
+    ap.add_argument('--extract-changes', action='store_true', help='Extract and save a summary of all changes made')
+    ap.add_argument('--topic', '-t', default='The Future of Artificial Intelligence in Healthcare', help='Topic for generating a proposal')
+    args = ap.parse_args()
+
     proposal_writer = ProposalGenerator()
-    topic = "The Future of Artificial Intelligence in Healthcare"
+
+    if args.latex_file:
+        interactive = not args.non_interactive
+        result = proposal_writer.import_and_edit_latex(
+            args.latex_file, 
+            auto_instruction=args.auto_instruction, 
+            interactive=interactive,
+            auto_hints=args.auto_hints,
+            extract_changes_summary=args.extract_changes
+        )
+        
+        # Handle return value (might be tuple if extract_changes is True)
+        if args.extract_changes:
+            results, changes_summary = result
+        else:
+            results = result
+            changes_summary = None
+        
+        # Save paragraph history and results
+        proposal_writer.paragraph_history.save_to_file("proposal_paragraph_history.json")
+        out_json = args.latex_file.rstrip('.tex') + '_edited_paragraphs.json'
+        with open(out_json, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"\nParagraph editing completed. Results saved to '{out_json}' and history to 'proposal_paragraph_history.json'.")
+        
+        # Save changes summary if requested
+        if changes_summary:
+            changes_file = args.latex_file.rstrip('.tex') + '_changes_summary.json'
+            with open(changes_file, 'w', encoding='utf-8') as f:
+                json.dump(changes_summary, f, indent=2)
+            print(f"Changes summary saved to '{changes_file}'.")
+            print(f"\nSummary: {changes_summary['changed_paragraphs']}/{changes_summary['total_paragraphs']} paragraphs modified ({changes_summary['change_percentage']:.1f}%)")
+        
+        sys.exit(0)
+
+    # Default behavior: generate a proposal from topic
+    topic = args.topic
     generated_proposal = proposal_writer(topic=topic)
 
     print("Generated Proposal:")
@@ -223,7 +575,7 @@ if __name__ == "__main__":
     # Example: Parse LaTeX structure if LaTeX input is provided
     latex_example = r"""
     \documentclass{article}
-    \title{Advanced AI in Healthcare}
+    	itle{Advanced AI in Healthcare}
     \section{Introduction}
     \subsection{Background}
     Some text here.
@@ -234,8 +586,6 @@ if __name__ == "__main__":
     This is a theorem.
     \end{theorem}
     """
-    
-    parser = LaTeXStructureParser()
     structure = parser.parse_structure(latex_example)
     print("\nExtracted LaTeX Structure:")
     print(json.dumps(structure, indent=2))
