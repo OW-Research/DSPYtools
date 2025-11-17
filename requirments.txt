@@ -1,5 +1,0 @@
-dspy 
-openai
-requests 
-beautifulsoup4 
-markitdown 
