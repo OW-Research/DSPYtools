@@ -1,4 +1,4 @@
-from dotenv import load_dotenv
+
 import docanalyzer as d
 import os
 import dspy

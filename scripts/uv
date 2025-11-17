@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# Simple 'uv' helper script to create a virtual env and install requirements.
+# Usage:
+#   ./scripts/uv create [ENV_DIR]    -> create virtualenv (default .venv)
+#   ./scripts/uv install [ENV_DIR]   -> pip install -r requirements.txt into env
+#   ./scripts/uv run [ENV_DIR] -- cmd -> run command inside the env
+
+set -euo pipefail
+
+CMD="$1" || CMD=""
+ENV_DIR=".venv"
+shift || true
+
+if [[ "$1" && "$CMD" != "run" ]]; then
+  ENV_DIR="$1"
+  shift || true
+fi
+
+case "$CMD" in
+  create)
+    PY=$(which python3 || which python)
+    if [[ -z "$PY" ]]; then
+      echo "No python interpreter found on PATH" >&2
+      exit 1
+    fi
+    echo "Creating virtualenv in ${ENV_DIR} using ${PY}..."
+    "$PY" -m venv "$ENV_DIR"
+    echo "Virtualenv created at ${ENV_DIR}"
+    ;;
+
+  install)
+    if [[ ! -d "$ENV_DIR" ]]; then
+      echo "Virtualenv not found at ${ENV_DIR}, creating..."
+      ./scripts/uv create "$ENV_DIR"
+    fi
+    echo "Installing requirements into ${ENV_DIR}..."
+    # shellcheck disable=SC1091
+    source "${ENV_DIR}/bin/activate"
+    pip install --upgrade pip
+    if [[ -f requirements.txt ]]; then
+      pip install -r requirements.txt
+    else
+      echo "requirements.txt not found in repo root" >&2
+      deactivate || true
+      exit 1
+    fi
+    deactivate || true
+    ;;
+
+  run)
+    if [[ $# -lt 1 ]]; then
+      echo "Usage: $0 run [ENV_DIR] -- cmd..." >&2
+      exit 1
+    fi
+    if [[ ! -d "$ENV_DIR" ]]; then
+      echo "Virtualenv not found at ${ENV_DIR}, creating..."
+      ./scripts/uv create "$ENV_DIR"
+      ./scripts/uv install "$ENV_DIR"
+    fi
+    # execute remaining args inside the venv
+    shift || true
+    # shellcheck disable=SC1091
+    source "${ENV_DIR}/bin/activate"
+    "$@"
+    deactivate || true
+    ;;
+
+  *)
+    echo "uv helper - commands: create | install | run" >&2
+    echo "Examples:" >&2
+    echo "  ./scripts/uv create .venv" >&2
+    echo "  ./scripts/uv install .venv" >&2
+    echo "  ./scripts/uv run .venv python run.py" >&2
+    exit 1
+    ;;
+esac

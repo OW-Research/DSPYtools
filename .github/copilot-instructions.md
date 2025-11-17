@@ -9,7 +9,11 @@ Quick start (developer environment)
 - Set environment variables in a `.env` or the shell:
   - `openai_key2` : API key used in `gencode.py` and `run.py` for the LLM.
   - `GITHUB_ACCESS_TOKEN` : token used by `utils.get_github_file_tree` and file content fetches.
-- Install dependencies (note the repo has a misspelled `requirments.txt`): review and install dependencies manually if needed.
+- Use the provided `uv` helper to manage virtual environments (instead of `venv`).
+  - Create an environment: `./scripts/uv create .venv`
+  - Install dependencies: `./scripts/uv install .venv`
+  - Run commands inside the env: `./scripts/uv run .venv python run.py`
+- Dependencies: a canonical `requirements.txt` is present at the repo root. Install via the `uv` helper or manually with `pip install -r requirements.txt`.
 - Run examples:
   - Generate llms.txt: `python3 run.py` (edit the `url` in the `__main__` block to target a repo).
   - Run the interactive generator: `python3 gencode.py` (it runs `run_example` in `__main__`).
