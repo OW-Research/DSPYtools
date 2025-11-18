@@ -70,7 +70,20 @@ existing infrastructure (at the level of software, computation, and data) is not
 The PI and co-PI have already interviewed some people working in scientific computing, but this provides only limited evidence, so there is a need to check whether these observations generalize.
 One of the main tasks of this project is to test these hypotheses. If they are validated,  we will build our category I proposal around the development of tools and methods to address these issues. If they are not validated, we will seek to develop alternative hypotheses about the main issues facing scientific computing in the United States nowadays.
 
-\subsection{Key Objective}
+We assume that the scientists' needs can be addressed via the creation of certain (software) tools like software registries, metadata generation tools, metadata repositories, etc. 
+ The goal of this proposal is to answer a few crucial questions:
+\begin{enumerate}
+    \item which kind of tools will serve the needs of scientists, regardless of area of research? What capabilities are needed to address the tasks that scientists carry out? 
+    \item can we develop tools that adjust to national-scale? Can the tools be devised so that they run in laptops, clusters, or the cloud? 
+    \item If groups of scientists at several institutions use such tools, how can all these individual systems coordinate and facilitate exchange of data products, datasets, workflows and results? Which software architecture (centralized, loosely coordinated, completely decentralized) would suit this challenge better?
+\end{enumerate}
+
+Traditional software development does not address these issues. 
+The goal is to make sure that software development in next phases is guided by scientist's needs, and that the design of an architecture for data and software sharing can be incorporated into scientists' workflows with minimal or no disruption. For instance, there may be results that can be shared and results that must be kept confidential: private data needs to be anonymized; temporary results confirmed.
+
+    Given the diversity of software available, the first step would be to find out what scientists actually use. The PI and co-PI propose to carry out a series of interviews and questionnaires at their respective institutions to find out what software, data standards and computing infrastructure are actually used in everyday scientific research. We will start focusing on groups of scientists with existing NSF grants (NIH grants, for medical researchers), as these usually provide the stimulus for organized data gathering and analysis. We will compare results across institutions and then reach out to other institutions across the country. To guarantee good response, we will start by asking for recommendations and introductions from the initial group of scientists interviewed. We will also talk to the technical personnel who is in charge of implementing the software systems needed for research. On a second round of interviews, we will ask the scientists for the main {\em pain points} with respect to computing, i.e. the capabilities they wish they had, as opposed to the capabilities they currently have. We will compare the results of both rounds of interviews with the lists of software available in published references to get an idea of the types of programs, data and workflows used, and analyze their features against the wish list of scientists. Using this information, a Category I proposal will be developed, centered on what scientists actually use and need.
+
+\subsection{Key Activities}
 The ultimate objective of this project is the development of a Category I proposal. Therefore, during the grant time we will focus on the following activities: 
 \begin{enumerate}
     \item \textbf{Identify Universal Data Management Needs}: Analyze the basic, general-purpose functionalities required by scientists across disciplines. This may include a variety of tools for needs that are common to all disciplines, like transforming raw data into standardized formats, and analyzing datasets to detect problems like missing data.
@@ -93,7 +106,7 @@ The project will be executed in multiple phases, each aiming to address distinct
 To develop the most effective tools, we must first understand the current landscape of data management in scientific research. We will conduct interviews and surveys with researchers from various fields (e.g., biology, physics, social sciences) to identify:
 \begin{itemize}
     \item The types of software tools, data formats, and computational resources commonly used by scientists.
-    \item Pain points and limitations in existing data management systems, including issues related to data formatting, metadata generation, and sharing.
+    \item Issues and limitations in existing data management systems, including issues related to data formatting, metadata generation, and sharing.
 \end{itemize}
 This will be done in two stages:
 \begin{enumerate}
@@ -137,25 +150,6 @@ At the completion of this project, we aim to deliver:
     \item \textbf{Category I Proposal}: A comprehensive proposal for the further expansion and refinement of these tools, with a focus on national-scale data management and sharing.
 \end{enumerate}
 
-
-
-
-We assume that the scientists' needs can be addressed via the creation of certain (software) tools like software registries, metadata generation tools, metadata repositories, etc. 
- The goal of this proposal is to answer a few crucial questions:
-\begin{enumerate}
-    \item which kind of tools will serve the needs of scientists, regardless of area of research? What capabilities are needed to address the tasks that scientists carry out? 
-    \item can we develop tools that adjust to national-scale? Can the tools be devised so that they run in laptops, clusters, or the cloud? 
-    \item If groups of scientists at several institutions use such tools, how can all these individual systems coordinate and facilitate exchange of data products, datasets, workflows and results? Which software architecture (centralized, loosely coordinated, completely decentralized) would suit this challenge better?
-\end{enumerate}
-
-Traditional software development does not address these issues. 
-In this project, we propose instead to carry out the following activities:
-\begin{itemize}
-    \item We will start by asking different groups of scientists about their data management needs; we will then initiate development of some tools that address basic needs. These tools will be tested by scientists and further refined according to the feedback received. This process will be repeated in a tight loop to make sure that software development is guided by scientist's needs.
-    \item We will investigate ways in which scientists share data and results in order to inform the design of a system that can scale to national level. We will design an architecture for data and software sharing -again in close collaboration with scientists, to make sure that what we offer can be incorporated into their workflows with minimal or no disruption. For instance, there may be results that can be shared and results that must be kept confidential: private data needs to be anonymized; temporary results confirmed.
-\end{itemize}
-
- Given the diversity of software available, the first step would be to find out what scientists actually use. The PI and co-PI propose to carry out a series of interviews and questionnaires at their respective institutions to find out what software, data standards and computing infrastructure are actually used in everyday scientific research. We will start focusing on groups of scientists with existing NSF grants (NIH grants, for medical researchers), as these usually provide the stimulus for organized data gathering and analysis. We will compare results across institutions and then reach out to other institutions across the country. To guarantee good response, we will start by asking for recommendations and introductions from the initial group of scientists interviewed. We will also talk to the technical personnel who is in charge of implementing the software systems needed for research. On a second round of interviews, we will ask the scientists for the main {\em pain points} with respect to computing, i.e. the capabilities they wish they had, as opposed to the capabilities they currently have. We will compare the results of both rounds of interviews with the lists of software available in published references to get an idea of the types of programs, data and workflows used, and analyze their features against the wish list of scientists. Using this information, a Category I proposal will be developed, centered on what scientists actually use and need.
 
 \bibliographystyle{acm}
 \bibliography{main}

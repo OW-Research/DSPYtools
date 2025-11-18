@@ -10,6 +10,8 @@ import re
 from datetime import datetime
 import argparse
 import sys
+import difflib
+import os
 
 lm = dspy.LM("openai/gpt-4o-mini")
 dspy.configure(lm=lm)
@@ -380,7 +382,71 @@ class ProposalGenerator(dspy.Module):
         key = section_title or f"Paragraph_{hash(paragraph_text) % 10000}"
         self.paragraph_history.add_version(key, edited)
         return edited
-    
+
+    def _compute_unified_diff(self, original: str, edited: str) -> str:
+        """Return a unified diff between original and edited paragraph texts."""
+        orig_lines = original.splitlines(keepends=True)
+        edited_lines = edited.splitlines(keepends=True)
+        diff = difflib.unified_diff(orig_lines, edited_lines, fromfile='original', tofile='edited', lineterm='')
+        return '\n'.join(diff)
+
+    def process_json_instructions(self, json_path: str, apply_changes: bool = True, extract_changes: bool = False, global_hint: str = None) -> Dict[str, Any]:
+        """Process a JSON file containing paragraph objects and apply instructions.
+
+        The expected JSON is an array of paragraph dicts similar to the output
+        of `import_and_edit_latex`. Entries may contain an `instruction` or
+        `hint` field. If `apply_changes` is True, the LLM will be used to edit
+        paragraphs according to the instruction (or `global_hint` if provided).
+
+        If `extract_changes` is True, returns a dict mapping paragraph indices
+        to unified diffs between the original and final text.
+        """
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        results = []
+        diffs = {}
+
+        for item in data:
+            idx = item.get('index')
+            orig = item.get('paragraph') or item.get('original') or ''
+            # instruction precedence: item.instruction -> item.hint -> global_hint
+            instr = item.get('instruction') or item.get('hint') or global_hint
+
+            final_text = item.get('final', orig)
+
+            if apply_changes and instr:
+                # apply LLM edit
+                try:
+                    edited = self.edit_paragraph_via_llm(orig, instr, section_title=item.get('section', ''), user_hint=item.get('hint', '') or global_hint or '')
+                    final_text = edited
+                except Exception as e:
+                    # on error, keep original and record error in item
+                    item['error'] = str(e)
+
+            # record final
+            item['final'] = final_text
+            results.append(item)
+
+            if extract_changes:
+                d = self._compute_unified_diff(orig, final_text)
+                diffs[str(idx)] = d
+
+        # Save back results next to original JSON
+        base, ext = os.path.splitext(json_path)
+        out_path = base + '_processed' + ext
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+
+        # also save diffs if requested
+        if extract_changes:
+            diff_path = base + '_diffs.json'
+            with open(diff_path, 'w', encoding='utf-8') as f:
+                json.dump(diffs, f, indent=2)
+            return {'processed_json': out_path, 'diffs_json': diff_path}
+
+        return {'processed_json': out_path}
+
     def extract_changes(self, original_paragraphs: List[Dict[str, Any]], edited_paragraphs: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Extract and summarize changes between original and edited paragraphs.
 
@@ -520,10 +586,28 @@ if __name__ == "__main__":
     ap.add_argument('--auto-hints', '--hints', help='Provide hints/context to guide the LLM (used with --auto-instruction)')
     ap.add_argument('--non-interactive', action='store_true', help='Run auto edits without prompting')
     ap.add_argument('--extract-changes', action='store_true', help='Extract and save a summary of all changes made')
-    ap.add_argument('--topic', '-t', default='The Future of Artificial Intelligence in Healthcare', help='Topic for generating a proposal')
+    ap.add_argument('--apply-json', help='Path to a JSON file with paragraph objects to apply instructions from')
+    ap.add_argument('--json-hint', help='Global hint/context to apply to JSON-driven edits (overridden by per-item hint/instruction)')
+    ap.add_argument('--json-extract-diffs', action='store_true', help='When applying JSON instructions, also extract unified diffs for each paragraph')
     args = ap.parse_args()
 
     proposal_writer = ProposalGenerator()
+
+    # If user wants to process a JSON of paragraph instructions, handle that first
+    if args.apply_json:
+        print(f"Processing JSON instructions from '{args.apply_json}'...")
+        res = proposal_writer.process_json_instructions(
+            args.apply_json,
+            apply_changes=True,
+            extract_changes=args.json_extract_diffs,
+            global_hint=args.json_hint
+        )
+        print("JSON processing completed. Outputs:")
+        for k, v in res.items():
+            print(f" - {k}: {v}")
+        # exit after processing JSON unless user also provided a LaTeX file
+        if not args.latex_file:
+            sys.exit(0)
 
     if args.latex_file:
         interactive = not args.non_interactive
@@ -560,33 +644,5 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Default behavior: generate a proposal from topic
-    topic = args.topic
-    generated_proposal = proposal_writer(topic=topic)
-
-    print("Generated Proposal:")
-    print("=" * 80)
-    print(generated_proposal)
-    print("=" * 80)
-
-    # Save paragraph history
-    proposal_writer.paragraph_history.save_to_file("proposal_paragraph_history.json")
-    print("\nParagraph history saved to 'proposal_paragraph_history.json'")
-
-    # Example: Parse LaTeX structure if LaTeX input is provided
-    latex_example = r"""
-    \documentclass{article}
-    	itle{Advanced AI in Healthcare}
-    \section{Introduction}
-    \subsection{Background}
-    Some text here.
-    \section{Methods}
-    \cite{Smith2020}
-    \$\$ E = mc^2 \$\$
-    \begin{theorem}
-    This is a theorem.
-    \end{theorem}
-    """
-    structure = parser.parse_structure(latex_example)
-    print("\nExtracted LaTeX Structure:")
-    print(json.dumps(structure, indent=2))
-
+    sys.exit(0)
+    
